@@ -4,6 +4,7 @@ from ENDFtk.tree import Tape
 from .resonance.ResonanceRangeCovariance import ResonanceRangeCovariance
 from .angular.AngularDistributionCovariance import AngularDistributionCovariance
 import datetime
+import os
 
 class NDSampler:
     def __init__(self, endf_tape, covariance_dict : dict = None, hdf5_filename = None):
@@ -72,10 +73,19 @@ class NDSampler:
         sampler.hdf5_file.close()
         return sampler.covariance_dict
        
-    def load_and_sample_covariance_objects(self, num_samples: int = 1):
+    def load_and_sample_covariance_objects(self, num_samples: int = 1, directory: str = 'random'):
         """
         Loads covariance data from the HDF5 file and generates samples.
         """
+        # Create the directory if it does not exist, or erase if it exists
+        if os.path.exists(directory):
+            for filename in os.listdir(directory):
+                file_path = os.path.join(directory, filename)
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+        else:
+            os.makedirs(directory)
+
         with h5py.File(self.hdf5_filename, 'r') as hdf5_file:
             covariance_objects = []
             for group_name in hdf5_file:
@@ -95,7 +105,7 @@ class NDSampler:
                 endf_tape = self.original_tape
                 for covariance_obj in covariance_objects:
                     covariance_obj.update_tape(endf_tape, 0)
-                endf_tape.to_file(f'sampled_tape_random0.endf')
+                endf_tape.to_file(os.path.join(directory, 'sampled_tape_random0.endf'))
                 return
 
             for i in range(1, num_samples + 1):
@@ -106,7 +116,7 @@ class NDSampler:
                     covariance_obj.update_tape(endf_tape, i)
                 
                 # Write the sampled tape to a file
-                endf_tape.to_file(f'sampled_tape_random{i}.endf')
+                endf_tape.to_file(os.path.join(directory, f'sampled_tape_random{i}.endf'))
                 
     def test_sample_covariance_objects(self, num_samples):
         """
